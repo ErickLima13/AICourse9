@@ -9,6 +9,7 @@ public class AI : MonoBehaviour
     Animator anim;
     public Transform player;
     State currentState;
+    public string state;
 
 
     // Start is called before the first frame update
@@ -23,5 +24,7 @@ public class AI : MonoBehaviour
     void Update()
     {
         currentState = currentState.Process();
+        state = currentState.ToString();
+        
     }
 }
