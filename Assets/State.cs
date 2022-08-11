@@ -5,7 +5,7 @@ public class State
 {
     public enum STATE
     {
-        IDLE, PATROL, PURSUE, ATTACK, SLEEP
+        IDLE, PATROL, PURSUE, ATTACK, HURRYOFF
     };
 
     public enum EVENT
@@ -62,9 +62,22 @@ public class State
         return false;
     }
 
+    public bool CanFeelPlayer()
+    {
+        Vector3 direction =  npc.transform.position - player.position;
+        float angle = Vector3.Angle(direction, npc.transform.forward);
+
+        if (direction.magnitude < 2.5f && angle < visAngle)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     public bool CanAttackPlayer()
     {
-        Vector3 direction = npc.transform.position - player.position;
+        Vector3 direction = player.position - npc.transform.position;
 
         if (direction.magnitude < shootDist)
         {
@@ -73,7 +86,6 @@ public class State
 
         return false;
     }
-
 }
 
 public class Idle : State
@@ -102,6 +114,7 @@ public class Idle : State
             nextState = new Patrol(npc, agent, anim, player);
             stage = EVENT.EXIT;
         }
+        
     }
 
     public override void Exit()
@@ -132,13 +145,12 @@ public class Patrol : State
             GameObject thisWp = GameEnvironment.Singleton.Checkpoints[i];
             float distance = Vector3.Distance(npc.transform.position, thisWp.transform.position);
 
-            if(distance < lastDist)
+            if (distance < lastDist)
             {
                 currentIndex = i - 1;
                 lastDist = distance;
-            }
+            }   
         }
-
         anim.SetTrigger("isWalking");
         base.Enter();
     }
@@ -165,11 +177,51 @@ public class Patrol : State
             stage = EVENT.EXIT;
         }
 
+        if(CanFeelPlayer())
+        {
+            nextState = new HurryOff(npc, agent, anim, player);
+            stage = EVENT.EXIT;
+            Debug.Log("player");
+        }
+
     }
 
     public override void Exit()
     {
         anim.ResetTrigger("isWalking");
+        base.Exit();
+    }
+}
+
+public class HurryOff : State
+{
+    public HurryOff(GameObject _npc, NavMeshAgent _agent, Animator _anim, Transform _player)
+        : base(_npc, _agent, _anim, _player)
+    {
+        name = STATE.HURRYOFF;
+        agent.speed = 6;
+        agent.isStopped = false;
+    }
+
+    public override void Enter()
+    {
+        anim.SetTrigger("isRunning");
+        agent.SetDestination(GameEnvironment.Singleton.Safe.transform.position);
+        base.Enter();
+    }
+
+    public override void Update()
+    {
+        if (agent.remainingDistance < 1)
+        {
+            nextState = new Idle(npc, agent, anim, player);
+            stage = EVENT.EXIT;
+        }
+    }
+
+    public override void Exit()
+    {
+        anim.ResetTrigger("isRunning");
         base.Exit();
     }
 }
